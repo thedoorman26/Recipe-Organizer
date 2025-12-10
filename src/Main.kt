@@ -1,5 +1,3 @@
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
 import java.io.File
 
 data class Recipe(
@@ -8,8 +6,6 @@ data class Recipe(
     val instructions: String,
     val categories: List<String>
 )
-
-const val CSV_PATH = "src/recipes.csv"
 
 fun main() {
     val recipes = loadRecipes()
@@ -41,38 +37,60 @@ fun main() {
     }
 }
 
-//////////////////////////////////////////////////////
-// CSV LOAD / SAVE
-//////////////////////////////////////////////////////
+//csv splitter for 4 columns with quoted instructions
+fun splitCsvLine(line: String): List<String> {
+    val result = mutableListOf<String>()
+    val current = StringBuilder()
+    var inQuotes = false
+    var i = 0
 
-fun loadRecipes(): MutableList<Recipe> {
-    val file = File(CSV_PATH)
+    while (i < line.length) {
+        val c = line[i]
 
-    if (!file.exists()) {
-        println("No recipes file found. Creating new one.")
-        file.createNewFile()
-        return mutableListOf()
+        when {
+            c == '"' -> {
+                if (inQuotes && i + 1 < line.length && line[i + 1] == '"') {
+                    current.append('"') // escaped quote ("")
+                    i++
+                } else {
+                    inQuotes = !inQuotes
+                }
+            }
+            c == ',' && !inQuotes -> {
+                result.add(current.toString())
+                current.clear()
+            }
+            else -> current.append(c)
+        }
+
+        i++
     }
 
+    result.add(current.toString())
+    return result
+}
+
+//csv loading
+fun loadRecipes(): MutableList<Recipe> {
+    val file = File("src/recipes.csv")
     val recipes = mutableListOf<Recipe>()
+
+    if (!file.exists()) return recipes
 
     file.forEachLine { line ->
         if (line.isBlank()) return@forEachLine
 
-        // Find comma boundaries safely
-        val firstComma = line.indexOf(',')
-        val secondComma = line.indexOf(',', firstComma + 1)
-        val lastComma = line.lastIndexOf(',')
+        val cols = splitCsvLine(line)
 
-        if (firstComma == -1 || secondComma == -1 || lastComma == -1 || lastComma == secondComma) {
+        if (cols.size != 4) {
             println("Skipping malformed line: $line")
             return@forEachLine
         }
 
-        val name = line.substring(0, firstComma).trim()
-        val ingredientsRaw = line.substring(firstComma + 1, secondComma).trim()
-        val instructions = line.substring(secondComma + 1, lastComma).trim()
-        val categoriesRaw = line.substring(lastComma + 1).trim()
+        val name = cols[0].trim()
+        val ingredientsRaw = cols[1].trim()
+        val instructionsRaw = cols[2].trim()
+        val categoriesRaw = cols[3].trim()
 
         val ingredients = if (ingredientsRaw.isBlank()) emptyList()
         else ingredientsRaw.split("|").map { it.trim() }
@@ -80,26 +98,29 @@ fun loadRecipes(): MutableList<Recipe> {
         val categories = if (categoriesRaw.isBlank()) emptyList()
         else categoriesRaw.split("|").map { it.trim() }
 
+        // Unescape doubled quotes in CSV
+        val instructions = instructionsRaw.replace("\"\"", "\"")
+
         recipes.add(Recipe(name, ingredients, instructions, categories))
     }
 
     return recipes
 }
 
+//csv saving
 fun saveRecipes(recipes: List<Recipe>) {
-    val file = File(CSV_PATH)
+    val file = File("src/recipes.csv")
     file.printWriter().use { out ->
         for (r in recipes) {
             val ingredients = r.ingredients.joinToString("|")
             val categories = r.categories.joinToString("|")
-            out.println("${r.name},$ingredients,${r.instructions},$categories")
+
+            val safeInstructions = r.instructions.replace("\"", "\"\"")
+
+            out.println("${r.name},$ingredients,\"$safeInstructions\",$categories")
         }
     }
 }
-
-//////////////////////////////////////////////////////
-// MENU ACTIONS
-//////////////////////////////////////////////////////
 
 fun listRecipes(recipes: List<Recipe>) {
     println("\n=== All Recipes ===")
