@@ -5,7 +5,7 @@ This is a recipe organization program using Kotlin that allows a user to create,
 I wrote this program to learn more about the Kotlin language, which I had never used prior, as well as using an IDE that is not Visual Studio. I also wanted to experiment with search functions, as they are new territory for me.
 
 Here's a link to a YouTube demonstration of the code:
-[Software Demo Video](http://youtube.link.goes.here)
+[Software Demo Video](https://www.youtube.com/watch?v=_cxoqSLzf0Y)
 
 # Development Environment
 
